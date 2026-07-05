@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Notas</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --sidebar-bg: #1f2430;
+    --sidebar-text: #d8dce6;
+    --accent: #4f7cff;
+    --accent-soft: #e8eeff;
+    --text: #22262e;
+    --muted: #8a90a0;
+    --border: #e2e5ea;
+    --danger: #e05555;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ---------- Sidebar ---------- */
+  #sidebar {
+    width: 290px;
+    min-width: 290px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    transition: transform .25s ease;
+    z-index: 20;
+  }
+  #sidebar header {
+    padding: 16px 16px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  #sidebar h1 { font-size: 17px; font-weight: 600; color: #fff; }
+  #btnNueva {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  #btnNueva:hover { filter: brightness(1.1); }
+  #buscador {
+    margin: 0 16px 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #39404f;
+    background: #2a3040;
+    color: #fff;
+    font-size: 13px;
+    outline: none;
+  }
+  #buscador::placeholder { color: #7d8496; }
+  #listaNotas {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 8px 8px;
+  }
+  .nota-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 4px;
+    position: relative;
+  }
+  .nota-item:hover { background: #2a3040; }
+  .nota-item.activa { background: #333b4e; }
+  .nota-item .titulo {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 24px;
+  }
+  .nota-item .fecha { font-size: 11px; color: #7d8496; margin-top: 3px; }
+  .nota-item .borrar {
+    position: absolute;
+    right: 8px;
+    top: 10px;
+    background: none;
+    border: none;
+    color: #7d8496;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    display: none;
+  }
+  .nota-item:hover .borrar { display: block; }
+  .nota-item .borrar:hover { color: var(--danger); background: #1f2430; }
+  #sidebar footer {
+    padding: 10px 16px;
+    border-top: 1px solid #2c3342;
+    display: flex;
+    gap: 8px;
+  }
+  #sidebar footer button {
+    flex: 1;
+    background: #2a3040;
+    color: var(--sidebar-text);
+    border: 1px solid #39404f;
+    border-radius: 8px;
+    padding: 7px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  #sidebar footer button:hover { background: #333b4e; }
+
+  /* ---------- Main ---------- */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    min-width: 0;
+  }
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+  }
+  #btnMenu {
+    display: none;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  #tituloNota {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    background: transparent;
+    min-width: 0;
+  }
+  #estadoGuardado { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+  /* ---------- Toolbar ---------- */
+  #toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px 16px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+  }
+  #toolbar button, #toolbar select {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 6px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text);
+    min-width: 34px;
+  }
+  #toolbar button:hover { background: var(--accent-soft); border-color: var(--accent); }
+  #toolbar .sep { width: 1px; background: var(--border); margin: 2px 4px; }
+  #btnAudio.grabando {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
+    animation: pulso 1.2s infinite;
+  }
+  @keyframes pulso { 50% { opacity: .6; } }
+
+  /* ---------- Editor ---------- */
+  #zonaEditor {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 60px;
+  }
+  #editor {
+    background: #fff;
+    width: 100%;
+    max-width: 820px;
+    min-height: 500px;
+    border-radius: var(--radius);
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    padding: 36px 44px;
+    outline: none;
+    font-size: 16px;
+    line-height: 1.65;
+    height: fit-content;
+  }
+  #editor:empty::before { content: "Escribe aquí tu nota… Puedes pegar imágenes (Ctrl+V) o grabar audio."; color: var(--muted); }
+  #editor img { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block; }
+  #editor audio { display: block; margin: 10px 0; width: 100%; max-width: 420px; }
+  #editor h1 { font-size: 26px; margin: 14px 0 8px; }
+  #editor h2 { font-size: 21px; margin: 12px 0 6px; }
+  #editor blockquote {
+    border-left: 3px solid var(--accent);
+    padding-left: 14px;
+    color: #555;
+    margin: 10px 0;
+  }
+  #editor ul, #editor ol { padding-left: 26px; margin: 8px 0; }
+  #editor p { margin: 6px 0; }
+
+  #vacio {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    gap: 12px;
+  }
+  #vacio button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  #aviso {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #22262e;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s;
+    z-index: 50;
+    max-width: 90vw;
+  }
+  #aviso.visible { opacity: 1; }
+
+  #overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 15;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 768px) {
+    #sidebar {
+      position: fixed;
+      left: 0; top: 0;
+      transform: translateX(-100%);
+      box-shadow: 4px 0 20px rgba(0,0,0,.3);
+    }
+    #sidebar.abierto { transform: translateX(0); }
+    #overlay.visible { display: block; }
+    #btnMenu { display: block; }
+    #editor { padding: 20px 18px; }
+    #zonaEditor { padding: 12px 8px 40px; }
+    #tituloNota { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+
+<aside id="sidebar">
+  <header>
+    <h1>📝 Mis Notas</h1>
+    <button id="btnNueva" title="Crear nota nueva">+ Nueva</button>
+  </header>
+  <input id="buscador" type="text" placeholder="Buscar notas…">
+  <div id="listaNotas"></div>
+  <footer>
+    <button id="btnExportar" title="Descargar copia de seguridad JSON">⬇ Exportar</button>
+    <button id="btnImportar" title="Restaurar desde copia JSON">⬆ Importar</button>
+  </footer>
+</aside>
+
+<div id="overlay"></div>
+
+<main id="main">
+  <div id="topbar">
+    <button id="btnMenu" title="Mostrar notas">☰</button>
+    <input id="tituloNota" type="text" placeholder="Título de la nota">
+    <span id="estadoGuardado"></span>
+  </div>
+
+  <div id="toolbar">
+    <select id="selFormato" title="Formato de párrafo">
+      <option value="p">Párrafo</option>
+      <option value="h1">Título 1</option>
+      <option value="h2">Título 2</option>
+      <option value="blockquote">Cita</option>
+    </select>
+    <div class="sep"></div>
+    <button data-cmd="bold" title="Negrita (Ctrl+B)"><b>B</b></button>
+    <button data-cmd="italic" title="Cursiva (Ctrl+I)"><i>I</i></button>
+    <button data-cmd="underline" title="Subrayado (Ctrl+U)"><u>S</u></button>
+    <button data-cmd="strikeThrough" title="Tachado"><s>T</s></button>
+    <div class="sep"></div>
+    <button data-cmd="insertUnorderedList" title="Lista de viñetas">• Lista</button>
+    <button data-cmd="insertOrderedList" title="Lista numerada">1. Lista</button>
+    <div class="sep"></div>
+    <button id="btnImagen" title="Insertar imagen desde archivo">🖼 Imagen</button>
+    <button id="btnAudio" title="Grabar audio con el micrófono">🎤 Grabar</button>
+    <div class="sep"></div>
+    <button data-cmd="removeFormat" title="Quitar formato">✕ Formato</button>
+  </div>
+
+  <div id="zonaEditor">
+    <div id="editor" contenteditable="true"></div>
+  </div>
+
+  <div id="vacio" style="display:none">
+    <div style="font-size:44px">🗒️</div>
+    <div>No hay ninguna nota abierta</div>
+    <button id="btnVaciaNueva">Crear mi primera nota</button>
+  </div>
+</main>
+
+<div id="aviso"></div>
+<input type="file" id="inputImagen" accept="image/*" multiple hidden>
+<input type="file" id="inputImportar" accept="application/json,.json" hidden>
+
+<script>
+"use strict";
+
+/* ================= IndexedDB ================= */
+const DB_NAME = "misNotasDB";
+const STORE = "notas";
+let db = null;
+
+function abrirDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const d = req.result;
+      if (!d.objectStoreNames.contains(STORE)) {
+        const st = d.createObjectStore(STORE, { keyPath: "id" });
+        st.createIndex("actualizada", "actualizada");
+      }
+    };
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function idbPut(nota) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).put(nota);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+    tx.onabort = () => rej(tx.error || new Error("Transacción abortada (¿cuota llena?)"));
+  });
+}
+
+function idbDelete(id) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
+function idbGetAll() {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, "readonly");
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = () => res(req.result || []);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+/* ================= Estado ================= */
+let notas = [];            // caché en memoria [{id,titulo,contenido,creada,actualizada}]
+let notaActual = null;
+let timerGuardado = null;
+let mediaRecorder = null;
+let chunksAudio = [];
+
+const $ = (s) => document.querySelector(s);
+const editor = $("#editor");
+const tituloInput = $("#tituloNota");
+const lista = $("#listaNotas");
+const estado = $("#estadoGuardado");
+
+/* ================= Utilidades ================= */
+function uid() {
+  return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+}
+
+function avisar(msg, ms = 2600) {
+  const a = $("#aviso");
+  a.textContent = msg;
+  a.classList.add("visible");
+  clearTimeout(a._t);
+  a._t = setTimeout(() => a.classList.remove("visible"), ms);
+}
+
+function fechaBonita(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) +
+         " · " + d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+}
+
+function extraerTexto(html) {
+  const t = document.createElement("div");
+  t.innerHTML = html;
+  return t.textContent || "";
+}
+
+/* ================= Lista lateral ================= */
+function pintarLista() {
+  const filtro = $("#buscador").value.trim().toLowerCase();
+  const ordenadas = [...notas].sort((a, b) => b.actualizada - a.actualizada);
+  lista.innerHTML = "";
+  for (const n of ordenadas) {
+    if (filtro) {
+      const hay = (n.titulo + " " + extraerTexto(n.contenido)).toLowerCase().includes(filtro);
+      if (!hay) continue;
+    }
+    const div = document.createElement("div");
+    div.className = "nota-item" + (notaActual && n.id === notaActual.id ? " activa" : "");
+    const tit = document.createElement("div");
+    tit.className = "titulo";
+    tit.textContent = n.titulo || "Sin título";
+    const fec = document.createElement("div");
+    fec.className = "fecha";
+    fec.textContent = fechaBonita(n.actualizada);
+    const del = document.createElement("button");
+    del.className = "borrar";
+    del.title = "Eliminar nota";
+    del.textContent = "🗑";
+    del.onclick = (e) => { e.stopPropagation(); eliminarNota(n.id); };
+    div.append(tit, fec, del);
+    div.onclick = () => abrirNota(n.id);
+    lista.appendChild(div);
+  }
+  if (!lista.children.length) {
+    lista.innerHTML = '<div style="padding:14px;color:#7d8496;font-size:13px">' +
+      (filtro ? "Sin resultados" : "Aún no hay notas") + "</div>";
+  }
+}
+
+/* ================= Notas ================= */
+function mostrarEditor(mostrar) {
+  $("#zonaEditor").style.display = mostrar ? "flex" : "none";
+  $("#toolbar").style.display = mostrar ? "flex" : "none";
+  $("#topbar").style.display = mostrar ? "flex" : "none";
+  $("#vacio").style.display = mostrar ? "none" : "flex";
+}
+
+async function nuevaNota() {
+  const ahora = Date.now();
+  const n = { id: uid(), titulo: "", contenido: "", creada: ahora, actualizada: ahora };
+  notas.push(n);
+  await guardarNota(n);
+  abrirNota(n.id);
+  tituloInput.focus();
+}
+
+function abrirNota(id) {
+  const n = notas.find(x => x.id === id);
+  if (!n) return;
+  notaActual = n;
+  tituloInput.value = n.titulo;
+  editor.innerHTML = n.contenido;
+  mostrarEditor(true);
+  pintarLista();
+  cerrarSidebarMovil();
+}
+
+async function eliminarNota(id) {
+  const n = notas.find(x => x.id === id);
+  if (!confirm('¿Eliminar la nota "' + (n.titulo || "Sin título") + '"? Esta acción no se puede deshacer.')) return;
+  try {
+    await idbDelete(id);
+    notas = notas.filter(x => x.id !== id);
+    if (notaActual && notaActual.id === id) {
+      notaActual = null;
+      mostrarEditor(false);
+    }
+    pintarLista();
+    avisar("Nota eliminada");
+  } catch (e) {
+    avisar("Error al eliminar: " + e.message);
+  }
+}
+
+async function guardarNota(n) {
+  try {
+    await idbPut(n);
+    estado.textContent = "✓ Guardado";
+    setTimeout(() => { if (estado.textContent === "✓ Guardado") estado.textContent = ""; }, 2000);
+  } catch (e) {
+    estado.textContent = "⚠ Error al guardar";
+    avisar("No se pudo guardar. Puede que el almacenamiento esté lleno. Exporta una copia de seguridad.", 5000);
+    console.error(e);
+  }
+}
+
+function programarGuardado() {
+  if (!notaActual) return;
+  estado.textContent = "Escribiendo…";
+  clearTimeout(timerGuardado);
+  timerGuardado = setTimeout(() => {
+    if (!notaActual) return;
+    notaActual.titulo = tituloInput.value;
+    notaActual.contenido = editor.innerHTML;
+    notaActual.actualizada = Date.now();
+    guardarNota(notaActual);
+    pintarLista();
+  }, 600);
+}
+
+/* ================= Toolbar ================= */
+document.querySelectorAll("#toolbar button[data-cmd]").forEach(btn => {
+  btn.addEventListener("mousedown", e => e.preventDefault()); // no perder selección
+  btn.addEventListener("click", () => {
+    editor.focus();
+    document.execCommand(btn.dataset.cmd, false, null);
+    programarGuardado();
+  });
+});
+
+$("#selFormato").addEventListener("change", function () {
+  editor.focus();
+  document.execCommand("formatBlock", false, this.value === "p" ? "p" : this.value);
+  this.value = "p";
+  programarGuardado();
+});
+
+/* ================= Imágenes ================= */
+function insertarHTMLenEditor(html) {
+  editor.focus();
+  if (!document.execCommand("insertHTML", false, html)) {
+    editor.insertAdjacentHTML("beforeend", html);
+  }
+  programarGuardado();
+}
+
+function archivoADataURL(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = () => rej(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+// Redimensiona imágenes grandes para no agotar el almacenamiento
+function comprimirImagen(dataURL, maxLado = 1600, calidad = 0.85) {
+  return new Promise((res) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width: w, height: h } = img;
+      if (w <= maxLado && h <= maxLado && dataURL.length < 500000) return res(dataURL);
+      const escala = Math.min(1, maxLado / Math.max(w, h));
+      const c = document.createElement("canvas");
+      c.width = Math.round(w * escala);
+      c.height = Math.round(h * escala);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      res(c.toDataURL("image/jpeg", calidad));
+    };
+    img.onerror = () => res(dataURL);
+    img.src = dataURL;
+  });
+}
+
+async function insertarImagen(file) {
+  try {
+    const bruto = await archivoADataURL(file);
+    const dataURL = await comprimirImagen(bruto);
+    insertarHTMLenEditor('<img src="' + dataURL + '" alt="imagen"><p><br></p>');
+  } catch (e) {
+    avisar("No se pudo insertar la imagen");
+  }
+}
+
+$("#btnImagen").addEventListener("click", () => $("#inputImagen").click());
+$("#inputImagen").addEventListener("change", async function () {
+  for (const f of this.files) await insertarImagen(f);
+  this.value = "";
+});
+
+// Pegar imágenes desde el portapapeles
+editor.addEventListener("paste", async (e) => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  const imgs = [...items].filter(i => i.type.startsWith("image/"));
+  if (imgs.length) {
+    e.preventDefault();
+    for (const it of imgs) {
+      const f = it.getAsFile();
+      if (f) await insertarImagen(f);
+    }
+  }
+});
+
+// Arrastrar y soltar imágenes
+editor.addEventListener("drop", async (e) => {
+  const files = e.dataTransfer && e.dataTransfer.files;
+  if (files && files.length) {
+    e.preventDefault();
+    for (const f of files) {
+      if (f.type.startsWith("image/")) await insertarImagen(f);
+    }
+  }
+});
+editor.addEventListener("dragover", e => e.preventDefault());
+
+/* ================= Audio ================= */
+const btnAudio = $("#btnAudio");
+
+btnAudio.addEventListener("click", async () => {
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+    return;
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    avisar("Este navegador no permite grabar audio");
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chunksAudio = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunksAudio.push(e.data); };
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      btnAudio.classList.remove("grabando");
+      btnAudio.innerHTML = "🎤 Grabar";
+      const blob = new Blob(chunksAudio, { type: mediaRecorder.mimeType || "audio/webm" });
+      const dataURL = await archivoADataURL(blob);
+      insertarHTMLenEditor('<audio controls src="' + dataURL + '"></audio><p><br></p>');
+      avisar("Audio insertado en la nota");
+    };
+    mediaRecorder.start();
+    btnAudio.classList.add("grabando");
+    btnAudio.innerHTML = "⏹ Detener";
+    avisar("Grabando… pulsa de nuevo para detener");
+  } catch (e) {
+    avisar("No se pudo acceder al micrófono: " + (e.name === "NotAllowedError" ? "permiso denegado" : e.message));
+  }
+});
+
+/* ================= Exportar / Importar ================= */
+$("#btnExportar").addEventListener("click", async () => {
+  try {
+    const todas = await idbGetAll();
+    const blob = new Blob([JSON.stringify({ app: "misNotas", version: 1, notas: todas }, null, 2)],
+                          { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "notas-copia-" + new Date().toISOString().slice(0, 10) + ".json";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    avisar("Copia de seguridad descargada");
+  } catch (e) {
+    avisar("Error al exportar: " + e.message);
+  }
+});
+
+$("#btnImportar").addEventListener("click", () => $("#inputImportar").click());
+$("#inputImportar").addEventListener("change", async function () {
+  const f = this.files[0];
+  this.value = "";
+  if (!f) return;
+  try {
+    const datos = JSON.parse(await f.text());
+    const lote = Array.isArray(datos) ? datos : datos.notas;
+    if (!Array.isArray(lote)) throw new Error("Formato no reconocido");
+    let nuevas = 0, actualizadas = 0;
+    for (const n of lote) {
+      if (!n.id || typeof n.contenido !== "string") continue;
+      const existe = notas.find(x => x.id === n.id);
+      await idbPut(n);
+      if (existe) { Object.assign(existe, n); actualizadas++; }
+      else { notas.push(n); nuevas++; }
+    }
+    pintarLista();
+    avisar("Importadas: " + nuevas + " nuevas, " + actualizadas + " actualizadas");
+  } catch (e) {
+    avisar("Error al importar: " + e.message, 4000);
+  }
+});
+
+/* ================= Sidebar móvil ================= */
+function cerrarSidebarMovil() {
+  $("#sidebar").classList.remove("abierto");
+  $("#overlay").classList.remove("visible");
+}
+$("#btnMenu").addEventListener("click", () => {
+  $("#sidebar").classList.add("abierto");
+  $("#overlay").classList.add("visible");
+});
+$("#overlay").addEventListener("click", cerrarSidebarMovil);
+
+/* ================= Eventos generales ================= */
+editor.addEventListener("input", programarGuardado);
+tituloInput.addEventListener("input", programarGuardado);
+$("#buscador").addEventListener("input", pintarLista);
+$("#btnNueva").addEventListener("click", nuevaNota);
+$("#btnVaciaNueva").addEventListener("click", nuevaNota);
+
+// Guardar inmediatamente antes de cerrar la página
+window.addEventListener("beforeunload", () => {
+  if (notaActual && timerGuardado) {
+    clearTimeout(timerGuardado);
+    notaActual.titulo = tituloInput.value;
+    notaActual.contenido = editor.innerHTML;
+    notaActual.actualizada = Date.now();
+    // put síncrono best-effort
+    try { db.transaction(STORE, "readwrite").objectStore(STORE).put(notaActual); } catch (e) {}
+  }
+});
+
+// Atajos: Ctrl+S fuerza guardado
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+    e.preventDefault();
+    clearTimeout(timerGuardado);
+    if (notaActual) {
+      notaActual.titulo = tituloInput.value;
+      notaActual.contenido = editor.innerHTML;
+      notaActual.actualizada = Date.now();
+      guardarNota(notaActual);
+      pintarLista();
+    }
+  }
+});
+
+/* ================= Inicio ================= */
+(async function init() {
+  try {
+    db = await abrirDB();
+  } catch (e) {
+    alert("No se pudo abrir la base de datos local. Comprueba que el navegador permite almacenamiento (modo incógnito puede bloquearlo).\n\n" + e.message);
+    return;
+  }
+  // Pedir almacenamiento persistente para que el navegador no borre los datos
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+  }
+  notas = await idbGetAll();
+  pintarLista();
+  if (notas.length) {
+    const ultima = [...notas].sort((a, b) => b.actualizada - a.actualizada)[0];
+    abrirNota(ultima.id);
+  } else {
+    mostrarEditor(false);
+  }
+})();
+</script>
+</body>
+</html>
