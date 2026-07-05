@@ -46,4 +46,4 @@ La premisa central del proyecto es que **tus notas no salen de tu ordenador**:
 
 ## Licencia
 
-MIT — úsalo, modifícalo y compártelo libremente.
+Ver en publicación
